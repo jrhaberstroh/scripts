@@ -1,0 +1,45 @@
+#!/bin/bash
+
+help()
+{
+sed --silent -e '/^: <<.*HELPDOC/,/^HELPDOC$/p' ${BASH_SOURCE[0]} | tail -n+2 | head -n-1
+}
+
+SRCDIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+
+: <<'HELPDOC'
+
+
+==================
+      newpy
+==================
+
+Creates a new python document with my common python headers and argparse
+default text. It makes me happy to do this.
+
+
+usage:
+    newpy $1    Creates a new file ($1) with header and argparse set up
+
+
+HELPDOC
+
+trap help EXIT
+: <<VARCHECK
+${1?}
+VARCHECK
+trap - EXIT
+
+
+cat <<'NEWPY' > $1
+import numpy as np
+import matplotlib.pyplot as plt
+import argparse
+
+
+parser = argparse.ArgumentParser(description="")
+#parser.add_argument("-n", type=str, help=)
+args   = parser.parse_args()
+
+NEWPY
+
