@@ -1,0 +1,76 @@
+#!/bin/bash
+
+help()
+{
+sed --silent -e '/^: <<.*HELPDOC/,/^HELPDOC$/p' ${BASH_SOURCE[0]} | tail -n+2 | head -n-1
+}
+
+SRCDIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+
+filename=$(pwd)/Haberstroh_$(date -dthis-friday -I).tex
+echo $filename
+
+cat <<'NEWBASH' > $filename
+% //////////////////////////////
+%    BEGIN HEADER
+% //////////////////////////////
+
+\documentclass[10pt, letterpaper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usepackage{float}
+\usepackage[left=2cm,right=2cm,top=2cm,bottom=2cm]{geometry}
+\graphicspath{{images/}}
+\newcommand{\lap}[1]{\widetilde{#1}(s)}
+\newcommand{\E}[1]{\langle{#1}\rangle}
+\newcommand{\LE}[1]{\left\langle{#1}\right\rangle}
+\newcommand{\pd}[2]{\frac{\partial #1}{\partial #2}}
+\newcommand{\half}{\frac{1}{2}}
+\newcommand{\erfc}[1]{\mathrm{erfc}(#1)}
+\newcommand{\problem}[2]{\vspace{12pt}
+{\large 
+\setlength{\parindent}{0cm}
+Problem #1 \textbf{#2}}
+\vspace{12pt}}
+\newcommand{\sect}[1]{\vspace{3mm}#1.}
+\def\maru{\begin{tikzpicture}[scale=2] %
+    \draw[very thick] (0,0) circle (2.2pt); %
+    \end{tikzpicture} \hspace{1pt}}
+\def\batsu{\begin{tikzpicture}[scale=4] %
+    \draw[very thick] (-1pt,-1pt) -- (1pt, 1pt) ; %
+    \draw[very thick] (-1pt, 1pt) -- (1pt, -1pt) ;  %
+    \end{tikzpicture} \hspace{1pt}}
+
+\def\checkmark{\tikz\fill[scale=0.4](0,.35) -- (.25,0) -- (1,.7) -- (.25,.15) -- cycle;} 
+\setlength{\parindent}{1cm}
+
+
+% //////////////////////////////
+%    MODIFY TITLE BELOW
+% //////////////////////////////
+
+
+\begin{document}
+\begin{flushright}
+John Haberstroh\\
+NEWBASH
+
+cat <<DATE >> $filename
+Weekly report, 2016-W$(date +%V) \\footnote{http://www.epochconverter.com/date-and-time/weeknumbers-by-year.php} [$(date -dlast-friday +"%b %d"), $(date -dthis-friday +"%b %d")]\\\\
+DATE
+
+cat <<'NEWBASH' >> $filename
+\end{flushright}
+
+% //////////////////////////////
+%    BEGIN TEXT BELOW
+% //////////////////////////////
+
+\section{Section 1}
+
+\end{document}
+NEWBASH

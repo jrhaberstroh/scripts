@@ -1,0 +1,150 @@
+#!/usr/bin/env python
+from __future__ import division, print_function
+import numpy as np
+import argparse
+import logging
+logging.basicConfig(level=logging.DEBUG)
+import os
+SRCDIR=os.path.dirname(os.path.realpath(__file__))
+
+def moving_average(a, n=3) :                                                
+    ret = np.cumsum(a, dtype=float)                                         
+    ret[n:] = ret[n:] - ret[:-n]                                            
+    return ret[n - 1:] / n                                                  
+def ts_from_t(timeseries, n):
+    return np.hstack((moving_average(timeseries[:,0], n)[:, np.newaxis], moving_average(timeseries[:,1], n)[:, np.newaxis]))
+
+def ns_from_ps(ps_x):
+    return ps_x / 1000.
+
+def forcelist(x):
+    if x is None:
+        return None
+    elif not type(x) is list:
+        return np.array([x])
+    else:
+        return np.array(x)
+
+N_default = 500
+
+parser = argparse.ArgumentParser(description="")
+parser.add_argument("xvg", type=str, help="input xvg file")
+parser.add_argument("-N", type=int, nargs="+", default=None, help="(500) Number of frames to average over")
+parser.add_argument("-T_ns", type=float, nargs="+", default=None, help="(None) T for averaging, overrides -N")
+parser.add_argument("-o", type=str, nargs="+", default=None, help="(None) output image location; if None, goes to screen.")
+
+parser.add_argument("-size", type=float, nargs=2, default=(4,3), help='(4 3) Size of image, inches')
+parser.add_argument("-style", type=str, default=None, help='(None) Alternate style for matplotlib')
+parser.add_argument("-title", type=str, default=None, help='(None) Alternate title')
+parser.add_argument("-xlabel", type=str, default=None, help='(None) Alternate xlabel')
+parser.add_argument("-ylabel", type=str, default=None, help='(None) Alternate ylabel')
+parser.add_argument("-padbot", type=float, default=.15, help='(.15) Fractional padding, bottom')
+parser.add_argument("-padlft", type=float, default=.20, help='(.20) Fractional padding, left')
+parser.add_argument("-nooffset", action='store_true', help='Turn off y-axis offsets during plotting')
+args      = parser.parse_args()
+
+## DATA INTEGRITY 1 -- check matching arguments
+if not args.o is None:
+    if (args.T_ns is None):
+        if len(args.o) != len(args.N):
+            raise ValueError("If passing -o, must pass exactly one -o argument for each -N argument")
+    elif len(args.T_ns) != len(args.N):
+        raise ValueError("If passing -o, must pass exactly one -o argument for each -T_ns argument")
+
+# Load safesaveplot, matplotlib.pyplot
+if not args.o is None:
+    import matplotlib
+    matplotlib.use("agg")
+import matplotlib.pyplot as plt
+def safesaveplot(out=None, transparent=False, clf=True):
+    fig = plt.gcf()
+    if out:
+        plt.savefig(out, transparent=transparent)
+        if clf:
+            plt.clf()
+    else:
+        plt.show()
+
+## DATA INTEGRITY 2 -- coerce to lists
+logging.debug("{} {} {}".format(args.T_ns, args.N, args.o))
+args.T_ns = forcelist(args.T_ns)
+args.N    = forcelist(args.N)
+args.o    = forcelist(args.o)
+print(args.T_ns, args.N, args.o)
+if not args.style is None:
+    plt.style.use(args.style)
+
+## DATA INTEGRITY 3 -- format plot labels
+title=''
+xlabel=''
+ylabel=''
+with open(args.xvg) as xvg_file:
+    for l in xvg_file:
+        if l[0] == '#':
+            pass
+        elif l[0] == '@':
+            l_arr = l.split()
+            if l_arr[1] == 'title':
+                title=' '.join(l_arr[2:])
+            elif l_arr[1] == 'xaxis':
+                xlabel=' '.join(l_arr[3:])
+            elif l_arr[1] == 'yaxis':
+                ylabel=' '.join(l_arr[3:])
+        else:
+            break
+title  = title if args.title is None else args.title
+xlabel = xlabel if args.xlabel is None else args.xlabel
+ylabel = ylabel if args.ylabel is None else args.ylabel
+t_data = np.loadtxt(args.xvg, comments=("@","#"))     
+ps_dt = t_data[1,0] - t_data[0,0]
+
+
+## DATA INTEGRITY 4 -- Manage 'None' situations
+## Case 1: All None
+if (args.T_ns is None) and (args.o is None) and (args.N is None):
+    print("Found case 1")
+    a_ns_T = [None]
+    args.o = [None]
+    a_N    = [N_default]
+
+## Case 2: Smoothing amounts specified
+elif (not args.T_ns is None) or (not args.N is None):
+    print("Found case 2")
+## Case 2.1: Time-based smoothing -- Prefer T_ns
+    if (not args.T_ns is None):
+        a_ns_T = args.T_ns
+        a_N = (a_ns_T / ns_from_ps(ps_dt)).astype(int)
+## Case 2.2: N-based smoothing
+    else:
+        a_ns_T = ns_from_ps(ps_dt) * args.N
+        a_N = args.N
+
+## Case 3: args.o is not None, but others are None
+else:
+    print("Found case 3")
+    a_ns_T = [None] * len(args.o)
+    a_N    = [N_default] * len(args.o)
+
+## Case 4: args.o None -- independent of other clauses
+if args.o is None:
+    print("Found case 4")
+    args.o = [None] * len(a_ns_T)
+logging.debug("{} {} {}".format(a_ns_T, a_N, args.o))
+
+
+## Actually do the analysis.... hahaha...
+for (i_ns_T, i_N, outname) in zip(a_ns_T, a_N, args.o):
+    print(i_ns_T, i_N, outname)
+    figure = plt.figure(figsize=args.size)
+    plt.subplots_adjust(left=args.padlft, bottom=args.padbot)
+    ts_smooth = ts_from_t(t_data, i_N)
+    plt.plot(ts_smooth[:,0]/1000., ts_smooth[:,1])
+    plt.title(title); 
+    plt.xlabel(xlabel); 
+    plt.ylabel(ylabel); 
+    if args.nooffset:
+        plt.gca().get_yaxis().get_major_formatter().set_useOffset(False)
+    safesaveplot(outname)
+
+
+

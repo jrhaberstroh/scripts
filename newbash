@@ -1,0 +1,41 @@
+#!/bin/bash
+
+help()
+{
+sed --silent -e '/^: <<.*HELPDOC/,/^HELPDOC$/p' ${BASH_SOURCE[0]} | tail -n+2 | head -n-1
+}
+
+SRCDIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+
+: <<'HELPDOC'
+
+
+==================
+      newbash
+==================
+
+Creates a new bash document with my common bash options.
+It makes me happy to do this.
+
+
+usage:
+    newbash $1    Creates a new file ($1) with header and argparse set up
+
+
+HELPDOC
+
+trap help EXIT
+: <<VARCHECK
+${1?}
+VARCHECK
+trap - EXIT
+
+
+cat <<'NEWBASH' > $1
+#!/bin/bash
+set -o nounset
+set -o errexit
+SRCDIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+NEWBASH
+
+chmod +x $1

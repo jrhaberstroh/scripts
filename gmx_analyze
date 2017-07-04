@@ -1,0 +1,13 @@
+#!/bin/bash
+set -o nounset
+set -o errexit
+SRCDIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+OPTS=$(OPTS-)
+
+g_energy -f $1 -o potential.xvg <<< Potential
+g_energy -f $1 -o kinetic.xvg <<< Kinetic
+g_gyrate -f $1.trr -s $1.tpr -o gyrate.xvg <<< Protein
+g_hbond  -f $1.trr -s $1.tpr -num hbnum.xvg $OPTS <<HBOND
+Protein_and_BCL
+Water_and_ions
+HBOND

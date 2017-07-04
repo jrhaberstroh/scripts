@@ -11,7 +11,9 @@ parser.add_argument("-n", type=int, default=100, help="bins, number of bins for 
 parser.add_argument("-o", type=str, help="out, file to write output")
 parser.add_argument("-l", action="store_true", help="log, print as logarithm")
 parser.add_argument("-d", action="store_true", help="density, normalize histogram")
-parser.add_argument("-xlim", nargs=2, type=float, help="limits, x-limits for plot")
+parser.add_argument("-fracskip", default=0, type=float, help="Fraction of data to skip from the start of file")
+parser.add_argument("-xscale", type=float, help="Factor to scale x-axis")
+parser.add_argument("-xlim", nargs=2, type=float, help="limits, x-limits for plot, original scale")
 args = parser.parse_args()
 
 if args.o:
@@ -21,7 +23,9 @@ import matplotlib.pyplot as plt
 
 data = np.loadtxt(args.xvg, comments='@', skiprows=args.H)
 data = data[args.s:]
-data = data[:, 1]
+N_start = data.shape[0] * args.fracskip
+data = data[N_start:, 1]
+
 if args.xlim:
     bins = np.linspace(args.xlim[0], args.xlim[1], args.n)
     hist,bins = np.histogram(data, bins=bins, density=args.d)
@@ -29,6 +33,8 @@ else:
     hist,bins = np.histogram(data, bins=args.n, density=args.d)
 bctr = bins[1:] * .5 + bins[:-1] * .5
 ubhist = np.exp( np.log(hist) - bctr * args.b )
+if args.xscale:
+    bins *= 349.757
 if args.l:
     plt.plot(bctr, np.log(ubhist))
 else:

@@ -32,14 +32,35 @@ trap - EXIT
 
 
 cat <<'NEWPY' > $1
+from __future__ import division, print_function
 import numpy as np
 import matplotlib.pyplot as plt
 import argparse
+import logging
+logging.basicConfig(level=logging.DEBUG)
+import os
+SRCDIR=os.path.dirname(os.path.realpath(__file__))
+
 
 
 parser = argparse.ArgumentParser(description="")
-#parser.add_argument("-n", type=str, help=)
+parser.add_argument("-o", type=str, default=None, help="output image location")
 args   = parser.parse_args()
+
+# START: SAFESAVEPLOT
+if not args.o is None:
+    import matplotlib
+    matplotlib.use("agg")
+import matplotlib.pyplot as plt
+def safesaveplot(out=None, suffix=None, transparent=False, clf=True):
+    fig = plt.gcf()
+    if out:
+        plt.savefig(out+suffix, transparent=transparent)
+        if clf:
+            plt.clf()
+    else:
+        plt.show()
+# END: SAFESAVEPLOT
 
 NEWPY
 

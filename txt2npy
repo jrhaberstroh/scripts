@@ -1,0 +1,17 @@
+#!/home/jhaberstroh/anaconda/bin/python
+import numpy as np
+import argparse
+
+parser = argparse.ArgumentParser(description="")
+parser.add_argument("input", type=str, nargs="+", help="output image location")
+parser.add_argument("-o", type=str, nargs="+", default=None, help="output location; if not specified, will be the original file name with .npy extension")
+args   = parser.parse_args()
+
+if args.o is None:
+    args.o = [infile + ".npy" for infile in args.input]
+
+for inname, outname in zip(args.input, args.o):
+    print "Importing {}...".format(inname)
+    data = np.loadtxt(inname)
+    print "Saving array {}...".format(outname)
+    np.save(outname, data)
