@@ -32,7 +32,7 @@ trap - EXIT
 
 
 cat <<'NEWBASH' > $1
-#!/bin/bash
+#!/usr/bin/env bash
 set -o nounset
 set -o errexit
 SRCDIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
