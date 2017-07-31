@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+
+tmp_mdp=$(mktemp)
+cat "integrator = md" > $tmp_mdp
+gmx grompp -f $tmp_mdp -c $1
+ 

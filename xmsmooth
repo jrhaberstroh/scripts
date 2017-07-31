@@ -17,19 +17,19 @@ def ts_from_t(timeseries, n):
 def ns_from_ps(ps_x):
     return ps_x / 1000.
 
-def forcelist(x):
+def forcelist(x, usenumpy=False):
     if x is None:
         return None
     elif not type(x) is list:
-        return np.array([x])
+        return [x] if not usenumpy else np.array([x])
     else:
-        return np.array(x)
+        return x if not usenumpy else np.array(x)
 
-N_default = 500
+N_default = 1
 
 parser = argparse.ArgumentParser(description="")
-parser.add_argument("xvg", type=str, help="input xvg file")
-parser.add_argument("-N", type=int, nargs="+", default=None, help="(500) Number of frames to average over")
+parser.add_argument("xvg", type=str, nargs='+', help="input xvg file(s); multiple files will be overlaid, and options will match across files.")
+parser.add_argument("-N", type=int, nargs="+", default=None, help="({}) Number of frames to average over".format(N_default))
 parser.add_argument("-T_ns", type=float, nargs="+", default=None, help="(None) T for averaging, overrides -N")
 parser.add_argument("-o", type=str, nargs="+", default=None, help="(None) output image location; if None, goes to screen.")
 
@@ -38,17 +38,23 @@ parser.add_argument("-style", type=str, default=None, help='(None) Alternate sty
 parser.add_argument("-title", type=str, default=None, help='(None) Alternate title')
 parser.add_argument("-xlabel", type=str, default=None, help='(None) Alternate xlabel')
 parser.add_argument("-ylabel", type=str, default=None, help='(None) Alternate ylabel')
+parser.add_argument("-legendlabels", type=str, nargs='+', default=None, help='(None) Labels for legend')
 parser.add_argument("-padbot", type=float, default=.15, help='(.15) Fractional padding, bottom')
-parser.add_argument("-padlft", type=float, default=.20, help='(.20) Fractional padding, left')
+parser.add_argument("-padleft", type=float, default=.20, help='(.20) Fractional padding, left')
 parser.add_argument("-nooffset", action='store_true', help='Turn off y-axis offsets during plotting')
+parser.add_argument("-scalex", type=float, default=1./1000, help='(1/1000) Multiplicative scale for x axis units')
+parser.add_argument("-plotstring", type=str, default='-', help='(-) String for plt.plot style selection')
+parser.add_argument("-alpha", type=float, default=.9, help='(.9) Transparency for plot paint')
 args      = parser.parse_args()
 
 ## DATA INTEGRITY 1 -- check matching arguments
 if not args.o is None:
-    if (args.T_ns is None):
+    if (args.T_ns is None and args.N is None):
+        pass
+    elif (args.T_ns is None):
         if len(args.o) != len(args.N):
             raise ValueError("If passing -o, must pass exactly one -o argument for each -N argument")
-    elif len(args.T_ns) != len(args.N):
+    elif len(args.o) != len(args.T_ns):
         raise ValueError("If passing -o, must pass exactly one -o argument for each -T_ns argument")
 
 # Load safesaveplot, matplotlib.pyplot
@@ -67,18 +73,23 @@ def safesaveplot(out=None, transparent=False, clf=True):
 
 ## DATA INTEGRITY 2 -- coerce to lists
 logging.debug("{} {} {}".format(args.T_ns, args.N, args.o))
-args.T_ns = forcelist(args.T_ns)
-args.N    = forcelist(args.N)
-args.o    = forcelist(args.o)
+args.xvg  = forcelist(args.xvg)
+args.T_ns = forcelist(args.T_ns, usenumpy=True)
+args.N    = forcelist(args.N,    usenumpy=True)
+args.o    = forcelist(args.o,    usenumpy=True)
 print(args.T_ns, args.N, args.o)
 if not args.style is None:
     plt.style.use(args.style)
+if not args.legendlabels is None:
+    args.legendlabels = forcelist(args.legendlabels)
+    if len(args.legendlabels) != len(args.xvg):
+        raise ValueError("Passed non-zero labels, but number of labels does not match number of input files")
 
 ## DATA INTEGRITY 3 -- format plot labels
 title=''
 xlabel=''
 ylabel=''
-with open(args.xvg) as xvg_file:
+with open(args.xvg[0]) as xvg_file:
     for l in xvg_file:
         if l[0] == '#':
             pass
@@ -95,7 +106,7 @@ with open(args.xvg) as xvg_file:
 title  = title if args.title is None else args.title
 xlabel = xlabel if args.xlabel is None else args.xlabel
 ylabel = ylabel if args.ylabel is None else args.ylabel
-t_data = np.loadtxt(args.xvg, comments=("@","#"))     
+t_data = np.loadtxt(args.xvg[0], comments=("@","#"))     
 ps_dt = t_data[1,0] - t_data[0,0]
 
 
@@ -134,16 +145,22 @@ logging.debug("{} {} {}".format(a_ns_T, a_N, args.o))
 
 ## Actually do the analysis.... hahaha...
 for (i_ns_T, i_N, outname) in zip(a_ns_T, a_N, args.o):
-    print(i_ns_T, i_N, outname)
     figure = plt.figure(figsize=args.size)
-    plt.subplots_adjust(left=args.padlft, bottom=args.padbot)
-    ts_smooth = ts_from_t(t_data, i_N)
-    plt.plot(ts_smooth[:,0]/1000., ts_smooth[:,1])
+    for xvg in args.xvg:
+        t_data = np.loadtxt(xvg, comments=("@","#"))     
+        print(i_ns_T, i_N, outname)
+        plt.subplots_adjust(left=args.padleft, bottom=args.padbot)
+        ts_smooth = ts_from_t(t_data, i_N)
+        plt.plot(ts_smooth[:,0]*args.scalex, ts_smooth[:,1], args.plotstring, alpha=args.alpha)
+    if not args.legendlabels is None:
+        leg = plt.legend(args.legendlabels)
+        for lh in leg.legendHandles:
+            lh._legmarker.set_alpha(1.0)
     plt.title(title); 
     plt.xlabel(xlabel); 
     plt.ylabel(ylabel); 
     if args.nooffset:
-        plt.gca().get_yaxis().get_major_formatter().set_useOffset(False)
+         plt.gca().get_yaxis().get_major_formatter().set_useOffset(False)
     safesaveplot(outname)
 
 

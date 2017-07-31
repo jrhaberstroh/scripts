@@ -1,0 +1,21 @@
+#!/bin/bash
+
+if [ -z ${1+DUMMY} ]; then
+  echo "No \$1 variable passed."
+  echo "USAGE: reinstall_local source_directory"
+  echo "NOTE: source_directory must be present in ~/Code folder"
+  exit 10
+fi
+
+cd ~/Code/datascience
+
+if [ ! -d $1 ]; then
+  echo "$1 is not a valid directory in ~/Code"
+fi
+
+cd $1
+R -q --no-save << SCRIPT
+.libPaths('/home/john/R/x86_64-pc-linux-gnu-library/3.2')
+devtools::install()
+SCRIPT
+
